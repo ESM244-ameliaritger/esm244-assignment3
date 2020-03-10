@@ -7,21 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      messages=FALSE,
-                      warnings=FALSE)
+                      message=FALSE,
+                      warning=FALSE)
 ```
 
-Create a single knitted HTML that introduces the document, describes the goals of your analyses, shows your beautifully organized code + nice analyses + finalized data visualizations, and briefly describes some of your findings. Some questions might be: 
+For this assignment, I will be performing a text analysis of Rachel Carson's "Silent Spring". (For more information, [check out the wikipedia page](https://en.wikipedia.org/wiki/Silent_Spring)) I will be creating a word cloud of the most commonly used words, as well as performing a sentiment analysis to identify overall sentiments in the text (though, with an understanding of the book, we can expect the majority sentiment to be negative). 
 
-What (non-stop) words are most common in the document?
-How many words are associated with each sentiment? 
-How does sentiment analysis compare for the different lexicons? 
-How many times do words of interest to you appear in the text? 
-How do sentiment/top words compare for speeches/documents/etc. from two or more different groups, candidates, etc.?
-
-You should include at least 2 finalized visualizations (e.g. word cloud, graphs/visualizations of word counts & sentiment analysis, etc.) for this task, with summaries of your major observations for each. 
-
-## Load packages and data
+Load packages and data
 ```{r}
 library(tidyverse)
 library(here)
@@ -34,7 +26,7 @@ path <- here("Silent_Spring-Rachel_Carson-1962.pdf")
 spring_text <- pdftools::pdf_text(path)
 ```
 
-## Do some wrangling
+Do some wrangling
 ```{r}
 spring <- data.frame(spring_text) %>%
   mutate(text_full = str_split(spring_text, pattern = "\r\n")) %>%  #split up existing strings in rows, at each line break >> each line shows up as a difference piece of a string
@@ -50,22 +42,22 @@ spring_wc <- spring %>%
   arrange(-n)
 ```
 
-## Remove stop words
+Remove stop words
 ```{r}
 spring_stop <- spring %>% 
   anti_join(stop_words) %>% #remove stopwords from ipcc_token
   dplyr::select(-spring_text)
 ```
 
-## Remove all numeric pieces:
+Remove all numeric pieces:
 ```{r}
 spring_no_numeric <- spring_stop %>% 
   dplyr::filter(is.na(as.numeric(word))) #for every entry in "word" column, convert it to a number - if it's not a number, return NA
 ```
 
-## Start doing some visualization
+### Start doing some visualization
 
-Word cloud
+# Here's a word cloud!
 ```{r}
 spring_top100 <- spring_no_numeric %>%
   mutate(word = str_replace_all(word,c("[^[:alnum:]]$" = "",  "s$" = "", "(\\(\\d*)" = "\\1\\)" ))) %>% #combine plural and singular words
@@ -79,6 +71,8 @@ ggplot(data=spring_top100, aes(label=word, size=n)) +
   scale_color_gradientn(colors = c("darkgreen", "blue", "red")) +
   theme_minimal()
 ```
+
+It comes at no surprise that among the most commonly used words in Rachel Carson's Silent Spring are chemical, insecticide, spraying, and ddt. These are found 467, 234, 190, and 188 times, respectively. 
 
 Sentiment analysis (just a wild guess, this is going to be generally negative...)
 ```{r}
@@ -104,8 +98,7 @@ spring_summary <- spring_afinn %>%
   )
 ```
 
-
-### Check out sentiments by NRC
+Check out sentiments by NRC
 ```{r}
 spring_nrc <- spring_stop %>% 
   inner_join(get_sentiments(lexicon = "nrc"))
@@ -115,7 +108,7 @@ spring_exclude <- spring_stop %>%
   anti_join(get_sentiments(lexicon="nrc"))
 ```
 
-Find counts by sentiment:
+## Find counts by sentiment:
 ```{r}
 spring_nrc_n <- spring_nrc %>% 
   count(sentiment, sort = TRUE) %>% 
@@ -123,8 +116,12 @@ spring_nrc_n <- spring_nrc %>%
          sentiment=fct_reorder(sentiment, -n)) #make it ggplot friendly (AKA remove default alphabetical order)
 
 ggplot(data=spring_nrc_n) +
-  geom_col(aes(x=sentiment, y=n))
+  geom_col(aes(x=sentiment, y=n)) +
+  labs(y="Count", x="Sentiment") +
+  theme_minimal()
 ```
+
+Performing sentiment analysis using [NRC Emotion Lexicon](https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm), we see that there is about equivalent postiive and negative words. However, among the top 5 most common sentiments, trust is the only positive one of the bunch.
 
 For each sentiment bin, what are the top 5 most frequent words associated with that bin?
 ```{r}
