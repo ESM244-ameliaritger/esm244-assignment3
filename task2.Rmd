@@ -80,4 +80,60 @@ ggplot(data=spring_top100, aes(label=word, size=n)) +
   theme_minimal()
 ```
 
-Sentiment analysis
+Sentiment analysis (just a wild guess, this is going to be generally negative...)
+```{r}
+spring_afinn <- spring_stop %>% 
+  inner_join(get_sentiments(lexicon="afinn"))
+
+spring_afinn_hist <- spring_afinn %>% 
+  count(value)
+
+ggplot(data=spring_afinn_hist, aes(x=value, y=n)) +
+  geom_col() +
+  theme_minimal()
+```
+
+```{r}
+spring_afinn2 <- spring_afinn %>% 
+  filter(value==2) #all words associated with value of 2
+
+spring_summary <- spring_afinn %>% 
+  summarize(
+    mean_score = mean(value), 
+    median_score = median(value)
+  )
+```
+
+
+### Check out sentiments by NRC
+```{r}
+spring_nrc <- spring_stop %>% 
+  inner_join(get_sentiments(lexicon = "nrc"))
+
+# See what's excluded:
+spring_exclude <- spring_stop %>% 
+  anti_join(get_sentiments(lexicon="nrc"))
+```
+
+Find counts by sentiment:
+```{r}
+spring_nrc_n <- spring_nrc %>% 
+  count(sentiment, sort = TRUE) %>% 
+  mutate(sentiment=as.factor(sentiment),
+         sentiment=fct_reorder(sentiment, -n)) #make it ggplot friendly (AKA remove default alphabetical order)
+
+ggplot(data=spring_nrc_n) +
+  geom_col(aes(x=sentiment, y=n))
+```
+
+For each sentiment bin, what are the top 5 most frequent words associated with that bin?
+```{r}
+spring_nrc_n5 <- spring_nrc %>% 
+  count(word, sentiment, sort=TRUE) %>% #get counts for each word associated for each sentiment
+  group_by(sentiment) %>% 
+  top_n(5) %>% #EXPECTS YOU TO HAVE DONE COUNT() ALREADY; get top 5 most common words for each group; ties are included in top_n()
+  ungroup()
+
+ggplot(data=spring_nrc_n5, aes(x=reorder(word,n), y=n), fill=sentiment) + #here's another way to reorder characters!
+  geom_col(show.legend=FALSE, aes(fill=sentiment)) +
+  facet_wrap(~sentiment, ncol=2, scales="free")
